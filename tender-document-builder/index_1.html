@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tender Document Package Builder - AI DevFest 2026</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Bundled local pdf-lib with CDN fallback -->
+  <script src="libs/pdf-lib.min.js"></script>
+  <script>
+    if (!window.PDFLib) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Top App Navigation Bar -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-wrapper">
+        <div class="brand-icon">📑</div>
+        <div class="brand-titles">
+          <h1 id="app-title">Tender Document Package Builder</h1>
+          <p id="app-subtitle">Assemble, validate, and produce compliant tender submission PDF packages</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <!-- Bilingual Toggle Button (Section 4.9 & Rulebook 5.6) -->
+        <button id="lang-toggle-btn" class="btn lang-btn" title="Switch Language / ভাষা পরিবর্তন">বাংলা</button>
+        <button id="load-sample-btn" class="btn btn-secondary">
+          <span>⚡</span> <span id="load-sample-btn-text">Load Sample Pack</span>
+        </button>
+        <button id="save-session-btn" class="btn btn-secondary">
+          <span>💾</span> <span id="save-session-btn-text">Save Session</span>
+        </button>
+        <button id="load-session-btn" class="btn btn-secondary">
+          <span>📂</span> <span id="load-session-btn-text">Load Session</span>
+        </button>
+        <button id="reset-btn" class="btn btn-danger">
+          <span>🗑️</span> <span id="reset-btn-text">Reset All</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="main-content">
+
+    <!-- Alert Notifications Banner -->
+    <div id="alerts-container"></div>
+
+    <!-- Top Deck: Tender Meta & Document Upload -->
+    <section class="top-deck">
+      
+      <!-- Card 1: Tender Details & Requirements JSON Loader -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span>📋</span> <span id="tender-info-title">Tender Details</span>
+          </h2>
+          <div>
+            <label class="btn btn-primary" style="cursor: pointer;">
+              <span>📁</span> <span id="load-req-btn-text">Load Requirements</span>
+              <input type="file" id="requirements-file-input" accept=".json,application/json" style="display: none;">
+            </label>
+          </div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-label" id="lbl-tender-id">Tender ID</div>
+            <div class="meta-value" id="val-tender-id">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label" id="lbl-submission-deadline">Submission Deadline</div>
+            <div class="meta-value" id="val-submission-deadline" style="color: var(--status-expired);">—</div>
+          </div>
+          <div class="meta-item" style="grid-column: span 2;">
+            <div class="meta-label">Tender Title</div>
+            <div class="meta-value" id="val-tender-title">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label" id="lbl-procuring-entity">Procuring Entity</div>
+            <div class="meta-value" id="val-procuring-entity">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label" id="lbl-bidder-name">Bidder Name</div>
+            <div class="meta-value" id="val-bidder-name">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Document PDFs Upload & Duplicates Shelf -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span>📤</span> <span id="upload-zone-title">Upload Document PDFs</span>
+          </h2>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="lbl-multi-files">Multi-file upload (PDF only)</span>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div class="dropzone" id="pdf-dropzone">
+          <input type="file" id="pdf-files-input" multiple accept=".pdf,application/pdf" class="file-input-hidden">
+          <div class="dropzone-icon">📥</div>
+          <div class="dropzone-text" id="upload-zone-hint">Drag & drop multiple PDF files or click to browse</div>
+          <div class="dropzone-subtext">Max 30 files • Up to 50 MB total</div>
+        </div>
+
+        <!-- Uploaded Files Shelf with Duplicate Indicator -->
+        <div style="margin-top: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--secondary);" id="uploaded-files-title">Uploaded Files</h3>
+          </div>
+          <div class="files-shelf" id="uploaded-files-shelf"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Real-time Stats Ribbon -->
+    <section class="stats-ribbon">
+      <div class="stat-box">
+        <div>
+          <div class="stat-label">Total Requirements</div>
+          <div class="stat-number" id="stat-total-reqs">0</div>
+        </div>
+        <span style="font-size: 24px;">📝</span>
+      </div>
+      <div class="stat-box">
+        <div>
+          <div class="stat-label">Files Matched</div>
+          <div class="stat-number text-success" id="stat-matched">0</div>
+        </div>
+        <span style="font-size: 24px;">🔗</span>
+      </div>
+      <div class="stat-box">
+        <div>
+          <div class="stat-label">Ready / Valid (OK)</div>
+          <div class="stat-number text-success" id="stat-ok">0</div>
+        </div>
+        <span style="font-size: 24px;">✅</span>
+      </div>
+      <div class="stat-box">
+        <div>
+          <div class="stat-label">Blocking Issues</div>
+          <div class="stat-number text-danger" id="stat-blocking">0</div>
+        </div>
+        <span style="font-size: 24px;">⚠️</span>
+      </div>
+    </section>
+
+    <!-- Blocker Alert Card (Section 4.7 & 5) -->
+    <section class="blockers-card" id="blockers-card" style="display: none;">
+      <div class="blockers-header">
+        <span>⚠️</span>
+        <span id="blockers-title">Package Generation Blocked</span>
+      </div>
+      <div style="font-size: 0.85rem; margin-bottom: 6px;" id="blockers-desc">The following problems must be resolved before the PDF can be created:</div>
+      <ul class="blockers-list" id="blockers-list"></ul>
+    </section>
+
+    <!-- Card 3: Document Checklist Table (Section 4.3, 4.4, 4.5 & 5) -->
+    <section class="card checklist-card">
+      <div class="table-toolbar">
+        <h2 class="card-title">
+          <span>📑</span> <span id="checklist-title">Document Requirements Checklist</span>
+        </h2>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="auto-match-btn" class="btn btn-secondary" title="Automatically match uploaded files based on filenames">
+            <span>✨</span> <span id="auto-match-btn-text">Auto-Match Files</span>
+          </button>
+          <button id="export-csv-btn" class="btn btn-secondary" title="Export checklist as CSV">
+            <span>📊</span> <span id="export-csv-btn-text">Export Checklist (CSV)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="checklist-table">
+          <thead>
+            <tr>
+              <th style="width: 50px; text-align: center;">Order</th>
+              <th>Document Title</th>
+              <th>Requirement</th>
+              <th>Matched File</th>
+              <th style="text-align: center;">Pages</th>
+              <th>Expiry Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="checklist-tbody">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Card 4: Package Generation Options & Download (Section 6 & 7) -->
+    <section class="generation-card">
+      <div class="card-header" style="margin-bottom: 0; padding-bottom: 12px;">
+        <h2 class="card-title">
+          <span>📦</span> <span id="package-actions-title">Package Generation & Submission</span>
+        </h2>
+      </div>
+
+      <div class="options-row">
+        <!-- Bonus 1: Index Page Toggle -->
+        <label class="checkbox-label">
+          <input type="checkbox" id="include-index-checkbox" checked>
+          <span>Include Table of Contents / Index page after cover (Bonus)</span>
+        </label>
+
+        <!-- Bonus 2: Seal / Signature Upload -->
+        <div style="display: inline-flex; align-items: center; gap: 10px; margin-left: auto;">
+          <span style="font-size: 0.85rem; font-weight: 600; color: var(--secondary);" id="stamp-title">Seal / Signature (PNG):</span>
+          <label class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; cursor: pointer;">
+            <span>🖋️</span> <span id="stamp-hint">Upload Stamp</span>
+            <input type="file" id="stamp-file-input" accept=".png,image/png" style="display: none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="gen-action-bar">
+        <div>
+          <div style="font-size: 0.85rem; font-weight: 600; color: var(--secondary);">Package Output Format:</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            • English Cover Page with metadata & checklist<br>
+            • Verified documents in exact order<br>
+            • Every page footer: <code>&lt;tender_id&gt; | Page X of Y</code>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button id="generate-btn" class="btn btn-primary gen-btn-big" disabled>
+            <span>⚙️</span> <span id="generate-btn-text">Generate Package PDF</span>
+          </button>
+          <button id="download-btn" class="btn btn-success gen-btn-big" style="display: none;">
+            <span>⬇️</span> <span id="download-btn-text">Download Package</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p id="footer-info">AI DevFest 2026 • Frontend Only Tender Document Package Builder • Follows Official Rulebook</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="i18n.js"></script>
+  <script src="pdf-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
